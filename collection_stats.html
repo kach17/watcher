@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collection Statistics</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Chart.js for visualizations - defer loading -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <!-- Add the navigation script -->
+  <script src="nav.js" defer></script>
+</head>
+<body>
+  <h1>Collection Statistics</h1>
+  
+  <!-- Navigation will be injected here by nav.js -->
+  
+  <!-- Remove the old nav buttons since we now have the main nav -->
+  
+  <div class="dashboard-container">
+    <!-- Add Filter Indicators Bar -->
+    <div class="dashboard-card span-12 filter-indicators-card">
+      <div class="dashboard-card-header">
+        <span>Active Filters</span>
+        <i class="fas fa-filter"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <div id="filterIndicators" class="filter-indicators">
+          <div class="no-filters">No active filters. Click on charts to filter data.</div>
+        </div>
+      </div>
+    </div>
+    <!-- KPI Cards Row -->
+    <div class="dashboard-card span-3 kpi-card">
+      <div class="dashboard-card-header">
+        <span>Total Dramas</span>
+        <i class="fas fa-film"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <div class="kpi-value" id="totalDramas">0</div>
+        <div class="kpi-label">Titles in collection</div>
+      </div>
+    </div>
+    
+    <div class="dashboard-card span-3 kpi-card">
+      <div class="dashboard-card-header">
+        <span>Hours Watched</span>
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <div class="kpi-value" id="totalHours">0</div>
+        <div class="kpi-label">Total viewing time</div>
+      </div>
+    </div>
+    
+    <div class="dashboard-card span-3 kpi-card">
+      <div class="dashboard-card-header">
+        <span>Average Rating</span>
+        <i class="fas fa-star"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <div class="kpi-value" id="avgRating">0</div>
+        <div class="kpi-label">Average TMDB score</div>
+      </div>
+    </div>
+    
+    <div class="dashboard-card span-3 kpi-card">
+      <div class="dashboard-card-header">
+        <span>Countries</span>
+        <i class="fas fa-globe"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <div class="kpi-value" id="countryCount">0</div>
+        <div class="kpi-label">Origin countries</div>
+      </div>
+    </div>
+    
+    <!-- Charts Row - Now using span-4 instead of span-6 -->
+    <div class="dashboard-card span-4 chart-card">
+      <div class="dashboard-card-header">
+        <span>Genre Distribution</span>
+        <i class="fas fa-chart-pie"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <canvas id="genreChart"></canvas>
+      </div>
+    </div>
+    
+    <div class="dashboard-card span-4 chart-card">
+      <div class="dashboard-card-header">
+        <span>Rating Distribution</span>
+        <i class="fas fa-star-half-alt"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <canvas id="ratingChart"></canvas>
+      </div>
+    </div>
+    
+    <div class="dashboard-card span-4 chart-card">
+      <div class="dashboard-card-header">
+        <span>Countries</span>
+        <i class="fas fa-globe-americas"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <canvas id="countryChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- Second Charts Row -->
+    <div class="dashboard-card span-4 chart-card">
+      <div class="dashboard-card-header">
+        <span>Top Genres by Hours</span>
+        <i class="fas fa-hourglass-half"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <canvas id="genreHoursChart"></canvas>
+      </div>
+    </div>
+    
+    <div class="dashboard-card span-4 chart-card">
+      <div class="dashboard-card-header">
+        <span>Release Year Distribution</span>
+        <i class="fas fa-calendar-alt"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <canvas id="releaseYearChart"></canvas>
+      </div>
+    </div>
+    
+    <div class="dashboard-card span-4 chart-card">
+      <div class="dashboard-card-header">
+        <span>Popularity vs Rating</span>
+        <i class="fas fa-chart-scatter"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <canvas id="popularityRatingChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- Lists Row -->
+    <div class="dashboard-card span-4 list-card">
+      <div class="dashboard-card-header">
+        <span>Favorite Genres</span>
+        <i class="fas fa-list"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <div id="favoriteGenres" class="stats-list"></div>
+      </div>
+    </div>
+    
+    <div class="dashboard-card span-4 list-card">
+      <div class="dashboard-card-header">
+        <span>Most Watched Countries</span>
+        <i class="fas fa-list"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <div id="topCountries" class="stats-list"></div>
+      </div>
+    </div>
+    
+    <!-- New Card for Filtered Series List -->
+    <div class="dashboard-card span-12 list-card">
+      <div class="dashboard-card-header">
+        <span>Filtered Series</span>
+        <i class="fas fa-filter"></i>
+      </div>
+      <div class="dashboard-card-content">
+        <div id="filteredSeriesList" class="filtered-series-list"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="config.js"></script>
+  <script>
+    // Load drama data from localStorage
+    const watchedDramas = JSON.parse(localStorage.getItem('watchedDramasData')) || [];
+    
+    // Global variables for charts and filters
+    let genreChart, countryChart, ratingChart, genreHoursChart, releaseYearChart, popularityRatingChart;
+    let activeFilters = {
+      genre: null,
+      country: null,
+      rating: null,
+      year: null
+    };
+    
+    // Function to filter dramas based on active filters
+    function getFilteredDramas() {
+      return watchedDramas.filter(drama => {
+        // Genre filter
+        if (activeFilters.genre && drama.genres && Array.isArray(drama.genres)) {
+          if (!drama.genres.some(g => g.name === activeFilters.genre)) {
+            return false;
+          }
+        }
+        
+        // Country filter
+        if (activeFilters.country && drama.origin_country && Array.isArray(drama.origin_country)) {
+          if (!drama.origin_country.includes(activeFilters.country)) {
+            return false;
+          }
+        }
+        
+        // Rating filter
+        if (activeFilters.rating) {
+          const rating = drama.vote_average;
+          if (typeof rating !== 'number') return false;
+          
+          switch(activeFilters.rating) {
+            case '9-10': return rating >= 9;
+            case '8-8.9': return rating >= 8 && rating < 9;
+            case '7-7.9': return rating >= 7 && rating < 8;
+            case '6-6.9': return rating >= 6 && rating < 7;
+            case '5-5.9': return rating >= 5 && rating < 6;
+            case 'Below 5': return rating < 5;
+            default: return true;
+          }
+        }
+        
+        // Year filter
+        if (activeFilters.year) {
+          let year = null;
+          if (drama.first_air_date) {
+            year = new Date(drama.first_air_date).getFullYear();
+          } else if (drama.release_date) {
+            year = new Date(drama.release_date).getFullYear();
+          }
+          
+          if (year !== activeFilters.year) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+    }
+    
+    // Update all stats and charts based on filtered data
+    function updateDashboard() {
+      const filteredDramas = getFilteredDramas();
+      updateStats(filteredDramas);
+      updateCharts(filteredDramas);
+      updateLists(filteredDramas);
+      updateFilteredSeriesList(filteredDramas); // Add this line
+    }
+    
+    // Calculate basic stats
+    function calculateStats(dramas = watchedDramas) {
+      // Total dramas
+      document.getElementById('totalDramas').textContent = dramas.length;
+      
+      // Average rating
+      const ratings = dramas
+        .map(drama => drama.vote_average)
+        .filter(rating => typeof rating === 'number');
+      
+      const avgRating = ratings.length > 0 
+        ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1) 
+        : 'N/A';
+      
+      document.getElementById('avgRating').textContent = avgRating;
+      
+      // Count unique countries
+      const countries = new Set();
+      dramas.forEach(drama => {
+        if (drama.origin_country && Array.isArray(drama.origin_country)) {
+          drama.origin_country.forEach(country => countries.add(country));
+        }
+      });
+      
+      document.getElementById('countryCount').textContent = countries.size;
+      
+      // Calculate total hours watched (based on episode count and runtime)
+      let totalMinutes = 0;
+      
+      dramas.forEach(drama => {
+        if (drama.number_of_episodes && drama.episode_run_time && drama.episode_run_time.length > 0) {
+          // For TV shows: episodes * average runtime
+          const avgRuntime = drama.episode_run_time.reduce((sum, time) => sum + time, 0) / drama.episode_run_time.length;
+          totalMinutes += drama.number_of_episodes * avgRuntime;
+        } else if (drama.runtime) {
+          // For movies
+          totalMinutes += drama.runtime;
+        }
+      });
+      
+      const totalHours = Math.round(totalMinutes / 60);
+      document.getElementById('totalHours').textContent = totalHours;
+      
+      return {
+        totalDramas: dramas.length,
+        avgRating,
+        countries,
+        totalHours
+      };
+    }
+    
+    // Update stats based on filtered data
+    function updateStats(filteredDramas) {
+      calculateStats(filteredDramas);
+    }
+    
+    // Create genre distribution chart
+    function createGenreChart(dramas = watchedDramas) {
+      // Count genres
+      const genreCounts = {};
+      
+      dramas.forEach(drama => {
+        if (drama.genres && Array.isArray(drama.genres)) {
+          drama.genres.forEach(genre => {
+            if (genre.name) {
+              genreCounts[genre.name] = (genreCounts[genre.name] || 0) + 1;
+            }
+          });
+        }
+      });
+      
+      // Sort genres by count
+      const sortedGenres = Object.entries(genreCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8); // Top 8 genres
+      
+      const labels = sortedGenres.map(item => item[0]);
+      const data = sortedGenres.map(item => item[1]);
+      
+      // Create chart
+      const ctx = document.getElementById('genreChart').getContext('2d');
+      
+      // Destroy existing chart if it exists
+      if (genreChart) genreChart.destroy();
+      
+      genreChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: [
+              '#e50914', '#e53935', '#d81b60', '#8e24aa', 
+              '#5e35b1', '#3949ab', '#1e88e5', '#039be5'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                color: '#e5e5e5',
+                font: {
+                  size: 10
+                },
+                boxWidth: 12
+              }
+            },
+            tooltip: {
+              bodyFont: {
+                size: 11
+              }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const index = elements[0].index;
+              const genre = labels[index];
+              
+              // Toggle filter
+              if (activeFilters.genre === genre) {
+                activeFilters.genre = null;
+              } else {
+                activeFilters.genre = genre;
+              }
+              
+              updateDashboard();
+              updateFilterIndicators();
+            }
+          }
+        }
+      });
+      
+      return sortedGenres;
+    }
+    
+    // Create country distribution chart
+    function createCountryChart(dramas = watchedDramas) {
+      // Count countries
+      const countryCounts = {};
+      
+      dramas.forEach(drama => {
+        if (drama.origin_country && Array.isArray(drama.origin_country)) {
+          drama.origin_country.forEach(country => {
+            countryCounts[country] = (countryCounts[country] || 0) + 1;
+          });
+        }
+      });
+      
+      // Sort countries by count
+      const sortedCountries = Object.entries(countryCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8); // Top 8 countries
+      
+      const labels = sortedCountries.map(item => item[0]);
+      const data = sortedCountries.map(item => item[1]);
+      
+      // Create chart
+      const ctx = document.getElementById('countryChart').getContext('2d');
+      
+      // Destroy existing chart if it exists
+      if (countryChart) countryChart.destroy();
+      
+      countryChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Number of Dramas',
+            data: data,
+            backgroundColor: '#e50914',
+            borderWidth: 0,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: '#e5e5e5',
+                font: {
+                  size: 11
+                }
+              }
+            },
+            y: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                color: '#e5e5e5',
+                font: {
+                  size: 11
+                }
+              }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const index = elements[0].index;
+              const country = labels[index];
+              
+              // Toggle filter
+              if (activeFilters.country === country) {
+                activeFilters.country = null;
+              } else {
+                activeFilters.country = country;
+              }
+              
+              updateDashboard();
+              updateFilterIndicators();
+            }
+          }
+        }
+      });
+      
+      return sortedCountries;
+    }
+    
+    // Create rating distribution chart
+    function createRatingChart(dramas = watchedDramas) {
+      // Group ratings into ranges
+      const ratingRanges = {
+        '9-10': 0,
+        '8-8.9': 0,
+        '7-7.9': 0,
+        '6-6.9': 0,
+        '5-5.9': 0,
+        'Below 5': 0
+      };
+      
+      dramas.forEach(drama => {
+        const rating = drama.vote_average;
+        if (typeof rating === 'number') {
+          if (rating >= 9) ratingRanges['9-10']++;
+          else if (rating >= 8) ratingRanges['8-8.9']++;
+          else if (rating >= 7) ratingRanges['7-7.9']++;
+          else if (rating >= 6) ratingRanges['6-6.9']++;
+          else if (rating >= 5) ratingRanges['5-5.9']++;
+          else ratingRanges['Below 5']++;
+        }
+      });
+      
+      const labels = Object.keys(ratingRanges);
+      const data = Object.values(ratingRanges);
+      
+      // Create chart
+      const ctx = document.getElementById('ratingChart').getContext('2d');
+      
+      // Destroy existing chart if it exists
+      if (ratingChart) ratingChart.destroy();
+      
+      ratingChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Number of Dramas',
+            data: data,
+            backgroundColor: [
+              '#e50914', '#e53935', '#d81b60', '#8e24aa', 
+              '#5e35b1', '#3949ab'
+            ],
+            borderWidth: 0,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: '#e5e5e5',
+                font: {
+                  size: 11
+                }
+              }
+            },
+            y: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: '#e5e5e5',
+                font: {
+                  size: 11
+                }
+              }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const index = elements[0].index;
+              const ratingRange = labels[index];
+              
+              // Toggle filter
+              if (activeFilters.rating === ratingRange) {
+                activeFilters.rating = null;
+              } else {
+                activeFilters.rating = ratingRange;
+              }
+              
+              updateDashboard();
+              updateFilterIndicators();
+            }
+          }
+        }
+      });
+    }
+    
+    // Create genre hours chart
+    function createGenreHoursChart(dramas = watchedDramas) {
+      // Calculate hours per genre
+      const genreHours = {};
+      
+      dramas.forEach(drama => {
+        if (drama.genres && Array.isArray(drama.genres)) {
+          let dramaMinutes = 0;
+          
+          if (drama.number_of_episodes && drama.episode_run_time && drama.episode_run_time.length > 0) {
+            // For TV shows: episodes * average runtime
+            const avgRuntime = drama.episode_run_time.reduce((sum, time) => sum + time, 0) / drama.episode_run_time.length;
+            dramaMinutes = drama.number_of_episodes * avgRuntime;
+          } else if (drama.runtime) {
+            // For movies
+            dramaMinutes = drama.runtime;
+          }
+          
+          const dramaHours = dramaMinutes / 60;
+          
+          // Distribute hours equally among genres
+          const genreCount = drama.genres.length;
+          const hoursPerGenre = dramaHours / genreCount;
+          
+          drama.genres.forEach(genre => {
+            if (genre.name) {
+              genreHours[genre.name] = (genreHours[genre.name] || 0) + hoursPerGenre;
+            }
+          });
+        }
+      });
+      
+      // Sort genres by hours
+      const sortedGenreHours = Object.entries(genreHours)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8); // Top 8 genres
+      
+      const labels = sortedGenreHours.map(item => item[0]);
+      const data = sortedGenreHours.map(item => Math.round(item[1]));
+      
+      // Create chart
+      const ctx = document.getElementById('genreHoursChart').getContext('2d');
+      
+      // Destroy existing chart if it exists
+      if (genreHoursChart) genreHoursChart.destroy();
+      
+      genreHoursChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: [
+              '#e50914', '#e53935', '#d81b60', '#8e24aa', 
+              '#5e35b1', '#3949ab', '#1e88e5', '#039be5'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                color: '#e5e5e5',
+                font: {
+                  size: 11
+                },
+                boxWidth: 15
+              }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const index = elements[0].index;
+              const genre = labels[index];
+              
+              // Toggle filter
+              if (activeFilters.genre === genre) {
+                activeFilters.genre = null;
+              } else {
+                activeFilters.genre = genre;
+              }
+              
+              updateDashboard();
+              updateFilterIndicators();
+            }
+          }
+        }
+      });
+    }
+    
+    // Update all charts with filtered data
+    function updateCharts(filteredDramas) {
+      createGenreChart(filteredDramas);
+      createCountryChart(filteredDramas);
+      createRatingChart(filteredDramas);
+      createGenreHoursChart(filteredDramas);
+      createReleaseYearChart(filteredDramas);
+      createPopularityRatingChart(filteredDramas);
+    }
+    
+    // Update lists with filtered data
+    function updateLists(filteredDramas) {
+      // Clear existing lists
+      document.getElementById('favoriteGenres').innerHTML = '';
+      document.getElementById('topCountries').innerHTML = '';
+      
+      // Count genres
+      const genreCounts = {};
+      filteredDramas.forEach(drama => {
+        if (drama.genres && Array.isArray(drama.genres)) {
+          drama.genres.forEach(genre => {
+            if (genre.name) {
+              genreCounts[genre.name] = (genreCounts[genre.name] || 0) + 1;
+            }
+          });
+        }
+      });
+      
+      // Sort genres by count
+      const sortedGenres = Object.entries(genreCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5); // Top 5 genres
+      
+      // Populate favorite genres list
+      const favoriteGenresEl = document.getElementById('favoriteGenres');
+      sortedGenres.forEach((genre, index) => {
+        favoriteGenresEl.innerHTML += `
+          <div class="stat-list-item">
+            <span class="stat-rank">${index + 1}</span>
+            <span class="stat-name">${genre[0]}</span>
+            <span class="stat-value">${genre[1]} dramas</span>
+          </div>
+        `;
+      });
+      
+      // Count countries
+      const countryCounts = {};
+      filteredDramas.forEach(drama => {
+        if (drama.origin_country && Array.isArray(drama.origin_country)) {
+          drama.origin_country.forEach(country => {
+            countryCounts[country] = (countryCounts[country] || 0) + 1;
+          });
+        }
+      });
+      
+      // Sort countries by count
+      const sortedCountries = Object.entries(countryCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5); // Top 5 countries
+      
+      // Populate top countries list
+      const topCountriesEl = document.getElementById('topCountries');
+      sortedCountries.forEach((country, index) => {
+        topCountriesEl.innerHTML += `
+          <div class="stat-list-item">
+            <span class="stat-rank">${index + 1}</span>
+            <span class="stat-name">${country[0]}</span>
+            <span class="stat-value">${country[1]} dramas</span>
+          </div>
+        `;
+      });
+    }
+    
+    // Add filter indicators to show active filters
+    function updateFilterIndicators() {
+      const container = document.getElementById('filterIndicators');
+      container.innerHTML = '';
+      
+      const activeFilterCount = Object.values(activeFilters).filter(f => f !== null).length;
+      
+      if (activeFilterCount === 0) {
+        container.innerHTML = '<div class="no-filters">No active filters. Click on charts to filter data.</div>';
+        return;
+      }
+      
+      // Create indicator for genre filter
+      if (activeFilters.genre) {
+        const indicator = document.createElement('div');
+        indicator.className = 'filter-indicator';
+        indicator.innerHTML = `
+          <span class="filter-indicator-label">Genre:</span>
+          <span class="filter-indicator-value">${activeFilters.genre}</span>
+          <i class="fas fa-times filter-indicator-remove"></i>
+        `;
+        indicator.addEventListener('click', () => {
+          activeFilters.genre = null;
+          updateDashboard();
+          updateFilterIndicators();
+        });
+        container.appendChild(indicator);
+      }
+      
+      // Create indicator for country filter
+      if (activeFilters.country) {
+        const indicator = document.createElement('div');
+        indicator.className = 'filter-indicator';
+        indicator.innerHTML = `
+          <span class="filter-indicator-label">Country:</span>
+          <span class="filter-indicator-value">${activeFilters.country}</span>
+          <i class="fas fa-times filter-indicator-remove"></i>
+        `;
+        indicator.addEventListener('click', () => {
+          activeFilters.country = null;
+          updateDashboard();
+          updateFilterIndicators();
+        });
+        container.appendChild(indicator);
+      }
+      
+      // Create indicator for rating filter
+      if (activeFilters.rating) {
+        const indicator = document.createElement('div');
+        indicator.className = 'filter-indicator';
+        indicator.innerHTML = `
+          <span class="filter-indicator-label">Rating:</span>
+          <span class="filter-indicator-value">${activeFilters.rating}</span>
+          <i class="fas fa-times filter-indicator-remove"></i>
+        `;
+        indicator.addEventListener('click', () => {
+          activeFilters.rating = null;
+          updateDashboard();
+          updateFilterIndicators();
+        });
+        container.appendChild(indicator);
+      }
+      
+      // Create indicator for year filter
+      if (activeFilters.year) {
+        const indicator = document.createElement('div');
+        indicator.className = 'filter-indicator';
+        indicator.innerHTML = `
+          <span class="filter-indicator-label">Year:</span>
+          <span class="filter-indicator-value">${activeFilters.year}</span>
+          <i class="fas fa-times filter-indicator-remove"></i>
+        `;
+        indicator.addEventListener('click', () => {
+          activeFilters.year = null;
+          updateDashboard();
+          updateFilterIndicators();
+        });
+        container.appendChild(indicator);
+      }
+      
+      // Add a clear all button if there are multiple filters
+      if (activeFilterCount > 1) {
+        const clearAll = document.createElement('div');
+        clearAll.className = 'filter-indicator clear-all';
+        clearAll.innerHTML = `Clear All`;
+        clearAll.addEventListener('click', () => {
+          activeFilters.genre = null;
+          activeFilters.country = null;
+          activeFilters.rating = null;
+          activeFilters.year = null;
+          updateDashboard();
+          updateFilterIndicators();
+        });
+        container.appendChild(clearAll);
+      }
+      
+      // Update the filtered series list title to show active filters
+      const filterHeader = document.querySelector('.dashboard-card:has(#filteredSeriesList) .dashboard-card-header span');
+      if (filterHeader) {
+        if (activeFilterCount > 0) {
+          filterHeader.textContent = `Filtered Series (${getFilteredDramas().length})`;
+        } else {
+          filterHeader.textContent = 'All Series';
+        }
+      }
+    }
+    
+    // Function to update the filtered series list
+    function updateFilteredSeriesList(dramas) {
+      const container = document.getElementById('filteredSeriesList');
+      container.innerHTML = '';
+      
+      if (dramas.length === 0) {
+        container.innerHTML = '<div class="no-results">No series match the current filters</div>';
+        return;
+      }
+      
+      // Sort dramas by name
+      const sortedDramas = [...dramas].sort((a, b) => {
+        const nameA = a.name || a.title || 'Unknown';
+        const nameB = b.name || b.title || 'Unknown';
+        return nameA.localeCompare(nameB);
+      });
+      
+      // Create elements for each drama
+      sortedDramas.forEach(drama => {
+        const title = drama.name || drama.title || 'Unknown Title';
+        const year = drama.first_air_date ? new Date(drama.first_air_date).getFullYear() : 
+                    (drama.release_date ? new Date(drama.release_date).getFullYear() : 'N/A');
+        const rating = drama.vote_average ? drama.vote_average.toFixed(1) : 'N/A';
+        const posterPath = drama.poster_path ? 
+                          `https://image.tmdb.org/t/p/w92${drama.poster_path}` : 
+                          'placeholder.jpg';
+        
+        const dramaEl = document.createElement('div');
+        dramaEl.className = 'filtered-series-item';
+        
+        dramaEl.innerHTML = `
+          <img src="${posterPath}" alt="${title}" onerror="this.src='placeholder.jpg'">
+          <div class="filtered-series-info">
+            <div class="filtered-series-title">${title}</div>
+            <div class="filtered-series-meta">
+              <div class="filtered-series-rating">
+                <i class="fas fa-star"></i> ${rating}
+              </div>
+              <span>${year}</span>
+            </div>
+          </div>
+        `;
+        
+        container.appendChild(dramaEl);
+      });
+    }
+    
+    // Initialize all charts and stats
+    function initializeStats() {
+      if (watchedDramas.length === 0) {
+        document.querySelector('.stats-container').innerHTML = `
+          <div class="no-results" style="grid-column: 1 / -1; text-align: center; padding: 3rem; background-color: #222; border-radius: 0.5rem; margin: 2rem 0;">
+            <i class="fas fa-chart-pie" style="font-size: 3.5rem; color: #e50914; margin-bottom: 1.5rem;"></i>
+            <h3 style="color: #e5e5e5; font-size: 1.5rem; margin-bottom: 0.5rem;">No Data Available</h3>
+            <p style="color: #aaa;">Add dramas to your collection to see statistics.</p>
+            <a href="watched_dramas.html" class="nav-button" style="display: inline-block; margin-top: 1.5rem;">
+              <i class="fas fa-th-large"></i> Go to Collection
+            </a>
+          </div>
+        `;
+        return;
+      }
+      
+      // Add CSS for cursor pointer on chart elements
+      const style = document.createElement('style');
+      style.textContent = `
+        .dashboard-card.chart-card {
+          cursor: pointer;
+        }
+        .dashboard-card.chart-card:hover {
+          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+      `;
+      document.head.appendChild(style);
+      
+      // Initialize dashboard
+      calculateStats();
+      createGenreChart();
+      createCountryChart();
+      createRatingChart();
+      createGenreHoursChart();
+      createReleaseYearChart();
+      createPopularityRatingChart();
+      updateLists(watchedDramas); // Populate lists on initial load
+      updateFilteredSeriesList(watchedDramas); // Initialize filtered series list
+      updateFilterIndicators();
+    }
+    
+    // Create popularity vs rating scatter plot
+    function createPopularityRatingChart(dramas = watchedDramas) {
+      // Prepare data points
+      const dataPoints = dramas
+        .filter(drama => typeof drama.vote_average === 'number' && typeof drama.popularity === 'number')
+        .map(drama => ({
+          x: drama.popularity,
+          y: drama.vote_average,
+          title: drama.name || drama.title || 'Unknown',
+          id: drama.id
+        }));
+      
+      // Create chart
+      const ctx = document.getElementById('popularityRatingChart').getContext('2d');
+      
+      // Destroy existing chart if it exists
+      if (popularityRatingChart) popularityRatingChart.destroy();
+      
+      popularityRatingChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'Dramas',
+            data: dataPoints,
+            backgroundColor: 'rgba(229, 9, 20, 0.7)',
+            pointRadius: 5,
+            pointHoverRadius: 7
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const point = context.raw;
+                  return `${point.title} (Rating: ${point.y.toFixed(1)}, Popularity: ${point.x.toFixed(1)})`;
+                }
+              }
+            },
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Popularity',
+                color: '#e5e5e5',
+                font: {
+                  size: 12
+                }
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: '#e5e5e5',
+                font: {
+                  size: 10
+                }
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Rating',
+                color: '#e5e5e5',
+                font: {
+                  size: 12
+                }
+              },
+              min: 0,
+              max: 10,
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: '#e5e5e5',
+                font: {
+                  size: 10
+                }
+              }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const index = elements[0].index;
+              const dramaId = dataPoints[index].id;
+              
+              // Find the drama and toggle selection
+              const selectedDrama = watchedDramas.find(d => d.id === dramaId);
+              if (selectedDrama) {
+                // You could implement a detail view or filtering here
+                console.log('Selected drama:', selectedDrama);
+              }
+            }
+          }
+        }
+      });
+      
+      return dataPoints;
+    }
+    
+    // Create release year distribution chart
+    function createReleaseYearChart(dramas = watchedDramas) {
+      // Count dramas by release year
+      const yearCounts = {};
+      
+      dramas.forEach(drama => {
+        let year = null;
+        if (drama.first_air_date) {
+          year = new Date(drama.first_air_date).getFullYear();
+        } else if (drama.release_date) {
+          year = new Date(drama.release_date).getFullYear();
+        }
+        
+        if (year && !isNaN(year)) {
+          yearCounts[year] = (yearCounts[year] || 0) + 1;
+        }
+      });
+      
+      // Get years and sort chronologically
+      const years = Object.keys(yearCounts).sort((a, b) => a - b);
+      const counts = years.map(year => yearCounts[year]);
+      
+      // Create chart
+      const ctx = document.getElementById('releaseYearChart').getContext('2d');
+      
+      // Destroy existing chart if it exists
+      if (releaseYearChart) releaseYearChart.destroy();
+      
+      releaseYearChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: years,
+          datasets: [{
+            label: 'Number of Dramas',
+            data: counts,
+            borderColor: '#e50914',
+            backgroundColor: 'rgba(229, 9, 20, 0.1)',
+            borderWidth: 2,
+            pointBackgroundColor: '#e50914',
+            pointRadius: 3,
+            fill: true,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                title: function(tooltipItems) {
+                  return tooltipItems[0].label;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: '#e5e5e5',
+                font: {
+                  size: 10
+                },
+                maxRotation: 45,
+                minRotation: 45
+              }
+            },
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: '#e5e5e5',
+                font: {
+                  size: 10
+                },
+                precision: 0
+              }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const index = elements[0].index;
+              const year = parseInt(years[index]);
+              
+              // Toggle filter
+              if (activeFilters.year === year) {
+                activeFilters.year = null;
+              } else {
+                activeFilters.year = year;
+              }
+              
+              updateDashboard();
+              updateFilterIndicators();
+            }
+          }
+        }
+      });
+      
+      return { years, counts };
+    }
+    
+    // Initialize on page load with a slight delay to ensure DOM is fully ready
+    document.addEventListener('DOMContentLoaded', function() {
+      // Small timeout to ensure everything is loaded
+      setTimeout(initializeStats, 100);
+    });
+  </script>
+</body>
+</html>
